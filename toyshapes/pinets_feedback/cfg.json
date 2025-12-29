@@ -1,0 +1,18 @@
+{
+  "Cbase": 16,
+  "depth": 3,
+  "activation": "sigmoid",
+  "hardSL": true,
+  "skip": false,
+  "use_decoder": true,
+  "zdim": 6400,
+  "lr": 0.005,
+  "betas": [
+    0.9,
+    0.95
+  ],
+  "dropout": 0.0,
+  "lam": 0.0,
+  "alpha_stab": 1000,
+  "gamma": 0.0
+}
