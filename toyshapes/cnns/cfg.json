@@ -1,0 +1,11 @@
+{
+  "Cbase": 32,
+  "depth": 3,
+  "skip": true,
+  "lr": 0.001,
+  "betas": [
+    0.9,
+    0.999
+  ],
+  "dropout": 0.1
+}
