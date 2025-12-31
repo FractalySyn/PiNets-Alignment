@@ -1,6 +1,5 @@
 import numpy as np
 import pandas as pd
-import scipy.ndimage
 import torch
 
 
@@ -43,7 +42,7 @@ def make_dataset(n_blocks, N, target_shape, shapes, rel_freq, **kwargs):
 
 
 
-def generate_images(seed, data, n_blocks=16, dim_per_block=20, target_shape='triangle', backgrounds=True, nonconvex=0.25, **kwargs):
+def generate_images(seed, data, n_blocks, dim_per_block, target_shape, backgrounds, nonconvex, **kwargs):
   """  Generates images and masks from the dataset.
     Args:
       seed (int): Random seed for reproducibility.
@@ -76,6 +75,19 @@ def generate_images(seed, data, n_blocks=16, dim_per_block=20, target_shape='tri
 
 
 def generate_image_array(row, n_blocks, dim_per_block, target_shape, seed, backgrounds, nonconvex, **kwargs):
+    """ Generates a single image and its mask from a row of shapes.
+    Args:
+      row (array): Array of shapes for each block in the image.
+      n_blocks (int): Number of blocks in the image (must be a perfect square).
+      dim_per_block (int): Dimension of each block in pixels.
+      target_shape (str): The positive class in binary classification — the shape to identify.
+      seed (int): Random seed for reproducibility.
+      backgrounds (bool): If True, uses random backgrounds; otherwise, use black background.
+      nonconvex (float): Probability of generating non-convex shapes.
+    Returns:
+      image (np.ndarray): The generated image as a 2D numpy array.
+      mask (np.ndarray): The mask for the image, where 1 indicates the presence of the target shape.
+    """
     
     sqrt_blocks = int(n_blocks ** 0.5)
     assert sqrt_blocks ** 2 == n_blocks, "n_blocks must be a perfect square"
