@@ -113,13 +113,13 @@ def train_val_split(X_flat, pi_star_flat, area_flat, val_split):
 
 
 
-def load_X(row):
-  s2_path = 'floods/S2Hand/' + row[0].replace('S1', 'S2')
+def load_X(row, DIR):
+  s2_path = DIR+'S2Hand/' + row[0].replace('S1', 'S2')
   with rasterio.open(s2_path) as src:
     return src.read()[[1,2,3,8,11,12]] 
   
-def load_pi(row):
-  mask_path = 'floods/LabelHand/' + row[1]
+def load_pi(row, DIR):
+  mask_path = DIR+'LabelHand/' + row[1]
   with rasterio.open(mask_path) as src:
     return src.read(1) 
 
