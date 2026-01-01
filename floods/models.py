@@ -24,10 +24,9 @@ import warnings
 
 
 
-
 class PiPrithvi(nn.Module):
   
-  def __init__(self, backbone_cfg, C_out, dim_in, dim_out, load_pretrained=True, freeze_backbone=False, device='cpu'):
+  def __init__(self, backbone_cfg, C_out, dim_in, dim_out, DIR='', load_pretrained=True, freeze_backbone=False, device='cpu'):
 
     super().__init__()
     self.dim_in = dim_in
@@ -43,8 +42,8 @@ class PiPrithvi(nn.Module):
     self.activ = lambda pi: F.softmax(pi, dim=1) if C_out > 1 else torch.sigmoid(pi)
 
     if load_pretrained:
-      url = '/kaggle/working/Prithvi-EO-1.0-100M/Prithvi_EO_V1_100M.pt' 
-      state_dict = torch.load(url, map_location=torch.device(device))
+    #   url = '/kaggle/working/Prithvi-EO-1.0-100M/Prithvi_EO_V1_100M.pt' 
+      state_dict = torch.load(DIR+'Prithvi_EO_V1_100M.pt', map_location=torch.device(device))
       for k in list(state_dict.keys()):
           if 'pos_embed' in k:
               del state_dict[k]
