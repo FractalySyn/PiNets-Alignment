@@ -3,7 +3,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 
-from floods.utils import save_model_except_encoder
+from floods.utils import save_model_except_encoder, save_full_model
 
 
 
@@ -107,7 +107,7 @@ def training(model, train_loader, val_loader, optimizer, scheduler, loss_, n_epo
       scheduler.step(val_mae)
       if val_mae < best_score:
         best_score = val_mae
-        save_model_except_encoder(model, path)
+        save_model_except_encoder(model, path) if model.load_pretrained else save_full_model(model, path)
     else:
       scheduler.step(val_far)
       if 1 - val_far > best_score:
@@ -227,31 +227,9 @@ def training_pinet(model, train_loader, weak_loader, gamma, val_loader, optimize
 
 
 
-def eval(model, test_loader, device):
-
-  model.eval(); test_mae = 0.0; test_far = 0.0; test_iou = 0.0; pi = []
-  with torch.no_grad():
-    for x, y, pi_star in test_loader:
-      pi_, y_pred = model(x.to(device))
-      pi.append(pi_)
-      test_mae += MAE()(y_pred, y.to(device)).item() * x.size(0)
-      test_far += FAR()(pi_, pi_star.to(device)).item() * x.size(0)
-      test_iou += IoU()(pi_, pi_star.to(device)).item() * x.size(0)
-
-  pi = torch.cat(pi, dim=0).argmax(dim=1).cpu()
-
-  test_mae /= len(test_loader.dataset)
-  test_far /= len(test_loader.dataset)
-  test_iou /= len(test_loader.dataset)
-
-  print(f'Test MAE: {test_mae:.0f},', 
-        f'Test TDR: {1 - test_far:.3f},', 
-        f'Test IoU: {test_iou:.3f}')
-  
-  return pi
 
 
-def eval2(model, test_loader, device, pi=None):
+def eval(model, test_loader, device, pi=None):
 
   if pi is None:
     model.eval(); pi = []; y_pred = []

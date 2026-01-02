@@ -32,6 +32,7 @@ class PiPrithvi(nn.Module):
     self.dim_in = dim_in
     self.dim_out = dim_out
     self.freeze_backbone = freeze_backbone
+    self.load_pretrained = load_pretrained
     self.ft_layers = list(range(0, backbone_cfg['depth']))[-4:]
 
     self.redim = lambda x, d: F.interpolate(x, size=(d, d), mode='bilinear', align_corners=False)
