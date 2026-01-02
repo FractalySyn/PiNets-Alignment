@@ -112,7 +112,7 @@ def training(model, train_loader, val_loader, optimizer, scheduler, loss_, n_epo
       scheduler.step(val_far)
       if 1 - val_far > best_score:
         best_score = 1 - val_far
-        save_model_except_encoder(model, path)
+        save_model_except_encoder(model, path) if model.load_pretrained else save_full_model(model, path)
                       
     print(f"Epoch {epoch+1}/{n_epochs}, Train Loss: {train_loss:.3f},",
           f"Val MAE: {val_mae:.0f}, Val TDR: {1-val_far:.3f}",

@@ -233,8 +233,9 @@ def visualize_predictions(pi1, pi2, pi_star, scenes, indices, names=('Predicted1
     fig, axes = plt.subplots(4, n, figsize=(2.5 * n, 10), dpi=100, gridspec_kw={'wspace':0.05, 'hspace':0.05})
 
     for i, idx in enumerate(indices):
-        # Sentinel-2 scene
-        axes[0, i].imshow(scenes[idx], vmax=1)
+        # Sentinel-2 scene (ensure valid RGB range for float images)
+        scene = scenes[idx].copy()
+        axes[0, i].imshow(np.clip(scene, 0.0, 1.0))
         axes[0, i].axis('off')
         # Ground truth mask
         axes[1, i].imshow(pi_star[idx], cmap=cmap, norm=norm)
