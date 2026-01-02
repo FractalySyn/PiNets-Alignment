@@ -230,7 +230,7 @@ def model_size(model):
 def visualize_predictions(pi1, pi2, pi_star, scenes, indices, names=('Predicted1', 'Predicted2'), cmap=None, norm=None):
     
     n = len(indices)
-    fig, axes = plt.subplots(4, n, figsize=(2.5 * n, 10), dpi=100, gridspec_kw={'wspace':0.05, 'hspace':0.05})
+    fig, axes = plt.subplots(4, n, figsize=(2.5 * n, 10), dpi=200, gridspec_kw={'wspace':0.05, 'hspace':0.05})
 
     for i, idx in enumerate(indices):
         # Sentinel-2 scene (ensure valid RGB range for float images)
@@ -253,7 +253,7 @@ def visualize_predictions(pi1, pi2, pi_star, scenes, indices, names=('Predicted1
     axes[2, 0].annotate(names[0], xy=(-0.05, 0.5), xycoords='axes fraction', va='center', ha='right', fontsize=14, fontweight='bold', rotation=90)
     axes[3, 0].annotate(names[1], xy=(-0.05, 0.5), xycoords='axes fraction', va='center', ha='right', fontsize=14, fontweight='bold', rotation=90)
 
-    plt.savefig('floods.png', dpi=200, bbox_inches='tight')
+    plt.savefig('floods/floods.png', dpi=200, bbox_inches='tight')
     plt.show()
 
 

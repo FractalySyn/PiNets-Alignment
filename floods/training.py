@@ -103,11 +103,13 @@ def training(model, train_loader, val_loader, optimizer, scheduler, loss_, n_epo
       val_far /= len(val_loader.dataset)
       val_iou /= len(val_loader.dataset)
 
+    ## A PiNet (trained on image-level labels) must be validated based on image-level performance, here MAE, as pixel-level info is assumed unavailable
     if loss_ == 'MAE':
       scheduler.step(val_mae)
       if val_mae < best_score:
         best_score = val_mae
         save_model_except_encoder(model, path) if model.load_pretrained else save_full_model(model, path)
+    ## The SegNet (trained on pixel-level labels) is validated based on its TDR (1 - FAR), i.e. true positives
     else:
       scheduler.step(val_far)
       if 1 - val_far > best_score:
