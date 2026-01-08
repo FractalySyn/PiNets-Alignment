@@ -19,7 +19,6 @@ from timm.models.vision_transformer import Block
 
 from abc import ABC, abstractmethod
 import math
-import warnings
 
 
 
@@ -27,6 +26,17 @@ import warnings
 class PiPrithvi(nn.Module):
   
   def __init__(self, backbone_cfg, C_out, dim_in, dim_out, DIR='', load_pretrained=True, freeze_backbone=False, device='cpu'):
+    """Encoder-decoder model used to build SegNet and PiNet in the flood mapping exercise 
+    Args:
+        backbone_cfg (dict): Configuration dictionary for the PrithviViT backbone
+        C_out (int): Number of output channels (classes)
+        dim_in (int): Input image dimension
+        dim_out (int): Output image dimension
+        DIR (str, optional): Directory path to load pretrained weights. Defaults to '', i.e. current directory.
+        load_pretrained (bool, optional): Whether to load pretrained weights. 
+        freeze_backbone (bool, optional): Whether to freeze the backbone during training. 
+        device (str, optional): Device to train the model on.
+    """
 
     super().__init__()
     self.dim_in = dim_in
@@ -43,7 +53,6 @@ class PiPrithvi(nn.Module):
     self.activ = lambda pi: F.softmax(pi, dim=1) if C_out > 1 else torch.sigmoid(pi)
 
     if load_pretrained:
-    #   url = '/kaggle/working/Prithvi-EO-1.0-100M/Prithvi_EO_V1_100M.pt' 
       state_dict = torch.load(DIR+'Prithvi_EO_V1_100M.pt', map_location=torch.device(device))
       for k in list(state_dict.keys()):
           if 'pos_embed' in k:
@@ -86,6 +95,14 @@ class PiPrithvi(nn.Module):
 class Decoder(nn.Module):
 
   def __init__(self, C_in, C_out, dim_in, dim_out):
+    """Decoder module with transposed convolutions to upsample feature maps to desired output size. Used after UperNetDecoder.
+    Args:
+        C_in (int): Number of input channels
+        C_out (int): Number of output channels
+        dim_in (int): Input image dimension
+        dim_out (int): Output image dimension
+    """
+
     super().__init__()
     self.interpolate = False
 
@@ -120,6 +137,11 @@ class Decoder(nn.Module):
 
 
 
+
+
+
+
+############### Borrowed code starts here ###############
 
 
 
@@ -863,26 +885,3 @@ class UperNetDecoder(nn.Module):
 
 
 
-
-
-
-def otsu_thresholding(band, t=None):
-    
-    if t is not None:
-        binary_mask = (band < t).float()
-        return binary_mask
-    
-    VH_flat = band.flatten()
-    hist, bin_edges = torch.histogram(VH_flat, bins=256, range=(float(VH_flat.min()), float(VH_flat.max())))
-    hist = hist.float() / hist.sum()
-    
-    cumulative_sum = torch.cumsum(hist, dim=0)
-    cumulative_mean = torch.cumsum(hist * torch.arange(256, dtype=torch.float32), dim=0)
-    global_mean = cumulative_mean[-1]
-    
-    between_class_variance = (global_mean * cumulative_sum - cumulative_mean) ** 2 / (cumulative_sum * (1 - cumulative_sum) + 1e-6)
-    optimal_threshold = torch.argmax(between_class_variance).item()
-    t = bin_edges[optimal_threshold]
-    binary_mask = (band < t).float()
-
-    return binary_mask, t

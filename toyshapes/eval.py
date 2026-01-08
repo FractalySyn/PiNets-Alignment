@@ -16,6 +16,18 @@ from glob import glob
 
 
 def evaluate_cnns(thresholds, saved_models, cnn_kwargs, X_test, y_test, Pi_star_test, device):
+  """ Evaluate a list of saved CNN models using both Vanilla Gradients and Grad-CAMs
+  Args:
+    thresholds: thresholds grid to find optimal detection maps
+    saved_models: list of paths to saved CNN models
+    cnn_kwargs: dictionary of CNN model parameters
+    X_test: test inputs
+    y_test: test labels
+    Pi_star_test: ground-truth detection maps
+    device: torch device
+  Returns:
+    Dictionary of List of results (dictionaries)
+  """
 
   test_loader = DataLoader(TensorDataset(X_test, y_test), batch_size=32, shuffle=False)
   cnn = CNN(**cnn_kwargs).to(device)
@@ -43,6 +55,18 @@ def evaluate_cnns(thresholds, saved_models, cnn_kwargs, X_test, y_test, Pi_star_
 
 
 def evaluate_pinets(thresholds, saved_models, pinet_kwargs, X_test, y_test, Pi_star_test, device):
+  """ Evaluate a list of saved PiNet models
+  Args: 
+    thresholds: thresholds grid to find optimal detection maps
+    saved_models: list of paths to saved PiNet models
+    pinet_kwargs: dictionary of PiNet model parameters
+    X_test: test inputs
+    y_test: test labels
+    Pi_star_test: ground-truth detection maps
+    device: torch device
+  Returns:
+    List of results (dictionaries)
+  """
 
   test_loader = DataLoader(TensorDataset(X_test, y_test), batch_size=32, shuffle=False)
   pinet = BinaryConvPiNet(**pinet_kwargs).to(device)
@@ -64,7 +88,56 @@ def evaluate_pinets(thresholds, saved_models, pinet_kwargs, X_test, y_test, Pi_s
 
 
 
+def evaluate(y_hat, Pi, X_test, y_test, Pi_star_test, thresholds, model, device):
+  """ Evaluate a single model given predictions and detection maps
+  Args:
+    y_hat: predicted labels
+    Pi: predicted detection maps
+    X_test: test inputs (used to obtain recursive predictions on Pi*z=Pi*x)
+    y_test: test labels
+    Pi_star_test: ground-truth detection maps
+    thresholds: thresholds grid to find optimal detection maps
+    model: model used to obtain predictions on Pi*z=Pi*x
+    device: torch device
+  Returns:
+    Dictionary of results
+  """
+    
+  pi_loader = DataLoader(TensorDataset(Pi, X_test.to(device)), batch_size=32, shuffle=False)
+  y_hat_on_piz = predict_on_piz(model, pi_loader, device)
+    
+  acc = Accuracy(y_hat.cpu(), y_test).item()
+  acc_on_piz = Accuracy(y_hat_on_piz.cpu(), y_test).item() 
+  acc_shift = acc - acc_on_piz 
+
+  tdrs, tars = compute_metrics(Pi, Pi_star_test, y_test, thresholds, device)
+  scores = tdrs * tars
+  pi_best = (Pi.cpu() > thresholds[np.argmax(scores)]).float()
+
+  optimal = eval_detection(pi_best, Pi_star_test, y_hat.cpu(), y_test, verbose=False)
+  naive = eval_detection(F.relu(Pi).cpu(), Pi_star_test, y_hat.cpu(), y_test, verbose=False)
+
+  return {
+    'acc': acc, 'acc_on_piz': acc_on_piz, 'acc_shift': acc_shift,
+    'naive': naive, 'optimal': optimal, 'tdrs': tdrs, 'tars': tars, 'scores': scores
+  }
+
+
+
+
 def evaluate_ensemble(thresholds, indiv_models, pinet_kwargs, X_test, y_test, Pi_star_test, device):
+  """ Evaluate a PiNet ensemble given individual saved models
+  Args:
+    thresholds: thresholds grid to find optimal detection maps
+    indiv_models: list of paths to saved individual PiNet models
+    pinet_kwargs: dictionary of PiNet model parameters
+    X_test: test inputs (used to obtain recursive predictions on Pi*z=Pi*x)
+    y_test: test labels
+    Pi_star_test: ground-truth detection maps
+    device: torch device
+  Returns:
+    Dictionary of results
+  """
 
   test_loader = DataLoader(TensorDataset(X_test, y_test), batch_size=32, shuffle=False)
   pinet = BinaryConvPiNet(**pinet_kwargs).to(device)
@@ -97,31 +170,6 @@ def evaluate_ensemble(thresholds, indiv_models, pinet_kwargs, X_test, y_test, Pi
 
   return results
 
-
-
-
-
-def evaluate(y_hat, Pi, X_test, y_test, Pi_star_test, thresholds, model, device, skip_shift=False):
-    
-  if not skip_shift:
-    pi_loader = DataLoader(TensorDataset(Pi, X_test.to(device)), batch_size=32, shuffle=False)
-    y_hat_on_piz = predict_on_piz(model, pi_loader, device)
-    
-  acc = Accuracy(y_hat.cpu(), y_test).item()
-  acc_on_piz = Accuracy(y_hat_on_piz.cpu(), y_test).item() if not skip_shift else None
-  acc_shift = acc - acc_on_piz if not skip_shift else None
-
-  tdrs, tars = compute_metrics(Pi, Pi_star_test, y_test, thresholds, device)
-  scores = tdrs * tars
-  pi_best = (Pi.cpu() > thresholds[np.argmax(scores)]).float()
-
-  optimal = eval_detection(pi_best, Pi_star_test, y_hat.cpu(), y_test, verbose=False)
-  naive = eval_detection(F.relu(Pi).cpu(), Pi_star_test, y_hat.cpu(), y_test, verbose=False)
-
-  return {
-    'acc': acc, 'acc_on_piz': acc_on_piz, 'acc_shift': acc_shift,
-    'naive': naive, 'optimal': optimal, 'tdrs': tdrs, 'tars': tars, 'scores': scores
-  }
   
 
 
@@ -132,6 +180,7 @@ def evaluate(y_hat, Pi, X_test, y_test, Pi_star_test, thresholds, model, device,
 
 
 def predict_cnn(cnn, test_loader, device):
+  """ Predict using a CNN model and compute Vanilla Gradients and Grad-CAMs"""
 
   y_hat, Vgrads, GradCAMs = [], [], []
   cnn.eval()
@@ -170,6 +219,7 @@ def predict_cnn(cnn, test_loader, device):
 
 
 def predict_pinet(pinet, test_loader, device, return_logits=False):
+  """ Predict using a PiNet model and obtain detection maps """
 
   y_hat, Pi = [], []
   pinet.eval()
@@ -193,6 +243,7 @@ def predict_pinet(pinet, test_loader, device, return_logits=False):
 
 
 def predict_on_piz(model, pi_loader, device):
+  """ Recursive prediction on Pi*z=Pi*x """
 
   y_hat = []
   model.eval()

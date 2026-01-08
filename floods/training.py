@@ -9,6 +9,7 @@ from floods.utils import save_model_except_encoder, save_full_model
 
 class MAE(nn.Module):
   def __init__(self):
+    """ Mean Absolute Error Loss for regression tasks."""
     super().__init__()
   def forward(self, pred, true):
     delta = (true - pred).abs()
@@ -16,6 +17,7 @@ class MAE(nn.Module):
     
 class FAR(nn.Module):
   def __init__(self):
+    """ False abstraction rate (1-true detection rate)"""
     super().__init__()
   def forward(self, pi, pi_star):
     FAR = 0.0
@@ -28,6 +30,7 @@ class FAR(nn.Module):
   
 class IoU(nn.Module):
   def __init__(self):
+    """ Intersection over Union (IoU)"""
     super().__init__()
   def forward(self, pi, pi_star):
     iou = 0.0
@@ -41,6 +44,7 @@ class IoU(nn.Module):
   
 class BCE(nn.Module):
   def __init__(self):
+    """ Binary Cross Entropy Loss for segmentation tasks."""
     super().__init__()
   def forward(self, pi, pi_star):
     total_loss = 0.0
@@ -64,6 +68,21 @@ class BCE(nn.Module):
 
 
 def training(model, train_loader, val_loader, optimizer, scheduler, loss_, n_epochs, device, ES, path):
+  """ Training loop for PiNet and SegNet models. Saves checkpoints based on validation performance (MAE or FAR).
+  Args:
+    model: PyTorch model to be trained.
+    train_loader: DataLoader for training data.
+    val_loader: DataLoader for validation data.
+    optimizer: Optimizer
+    scheduler: Learning rate scheduler.
+    loss_: Loss function to use ('MAE' for PiNet, 'FAR' or 'BCE' for SegNet).
+    n_epochs: Number of training epochs.
+    device: Device to run the training on ('cpu' or 'cuda').
+    ES: Early stopping learning rate threshold.
+    path: Path to save the best model.
+  Returns:
+    model: Trained PyTorch model.
+  """
 
   if loss_ == 'MAE':
     Loss = MAE()
@@ -129,102 +148,6 @@ def training(model, train_loader, val_loader, optimizer, scheduler, loss_, n_epo
 
 
 
-def training_segbase(model, train_loader, val_loader, optimizer, scheduler, loss_, n_epochs, device, ES, path):
-
-  if loss_ == 'FAR':
-    Loss = FAR()
-  elif loss_ == 'BCE':
-    Loss = BCE()
-  else:
-    raise NotImplementedError(f'Loss {loss_} not implemented! Choose from FAR, BCE.')
-
-  best_tdr = 0.0
-  for epoch in range(n_epochs):
-    model.train()
-
-    if optimizer.param_groups[0]['lr'] <= ES:
-      return model
-    
-    train_loss = 0.0
-    for x, y, pi_star in train_loader:
-      x, y, pi_star = x.to(device), y.to(device), pi_star.to(device)
-      pi, y_pred = model(x)
-      loss = Loss(pi, pi_star)
-      optimizer.zero_grad(); loss.backward(); optimizer.step()
-      train_loss += loss.item() * x.size(0)
-    train_loss /= len(train_loader.dataset)
-
-    model.eval()
-    val_far = 0.0; val_iou = 0.0
-    with torch.no_grad():
-      for x, y, pi_star in val_loader:
-        x, y, pi_star = x.to(device), y.to(device), pi_star.to(device)
-        pi, y_pred = model(x)
-        val_far += FAR()(pi, pi_star).item() * x.size(0)
-        val_iou += IoU()(pi, pi_star).item() * x.size(0)
-      val_far /= len(val_loader.dataset)
-      val_iou /= len(val_loader.dataset)
-    scheduler.step(val_far)
-
-    if 1 - val_far > best_tdr:
-      best_tdr = 1 - val_far
-      save_model_except_encoder(model, path)
-                      
-    print(f"Epoch {epoch+1}/{n_epochs}, Train Loss: {train_loss:.3f},",
-          f"Val TDR: {1-val_far:.3f}",
-          f"Val IoU: {val_iou:.3f}",
-          f"--- lr: {optimizer.param_groups[0]['lr']:.1e}")
-    
-  return model
-
-
-
-def training_pinet(model, train_loader, weak_loader, gamma, val_loader, optimizer, scheduler, n_epochs, device, ES, path):
-
-  best_tdr = 0.0
-  for epoch in range(n_epochs):
-    model.train()
-
-    if optimizer.param_groups[0]['lr'] <= ES:
-      return model
-    
-    train_loss = 0.0
-    for (x, y, pi_star), (xw, yw, z) in zip(train_loader, weak_loader):
-      x, y, pi_star = x.to(device), y.to(device), pi_star.to(device)
-      xw, yw, z = xw.to(device), yw.to(device), z.to(device)
-      pi, _ = model(x, z=None) 
-      _, y_predw = model(xw, z)
-      loss = gamma * BCE()(pi, pi_star) + SDLoss()(y_predw, yw)
-      optimizer.zero_grad(); loss.backward(); optimizer.step()
-      train_loss += loss.item() * x.size(0)
-    train_loss /= len(train_loader.dataset)
-
-    model.eval()
-    val_far = 0.0; val_iou = 0.0
-    with torch.no_grad():
-      for x, y, pi_star in val_loader:
-        x, y, pi_star = x.to(device), y.to(device), pi_star.to(device)
-        pi, y_pred = model(x, z=None)
-        val_far += FAR()(pi, pi_star).item() * x.size(0)
-        val_iou += IoU()(pi, pi_star).item() * x.size(0)
-      val_far /= len(val_loader.dataset)
-      val_iou /= len(val_loader.dataset)
-    scheduler.step(val_far)
-
-    if 1 - val_far > best_tdr:
-      best_tdr = 1 - val_far
-      save_model_except_encoder(model, path)
-                      
-    print(f"Epoch {epoch+1}/{n_epochs}, Train Loss: {train_loss:.3f},",
-          f"Val TDR: {1-val_far:.3f}",
-          f"Val IoU: {val_iou:.3f}",
-          f"--- lr: {optimizer.param_groups[0]['lr']:.1e}")
-    
-  return model
-
-
-
-
 
 
 
@@ -232,6 +155,15 @@ def training_pinet(model, train_loader, weak_loader, gamma, val_loader, optimize
 
 
 def eval(model, test_loader, device, pi=None):
+  """ Evaluation loop for PiNet and SegNet models. Computes MAE, IoU, and TDR metrics.
+  Args:
+    model: PyTorch model to be evaluated.
+    test_loader: DataLoader for test data.
+    device: Device to run the evaluation on ('cpu' or 'cuda').
+    pi: Optional precomputed predicted segmentation masks. If None, predictions are computed by the model.
+  Returns:
+    pic: Predicted segmentation masks as class indices.
+  """
 
   if pi is None:
     model.eval(); pi = []; y_pred = []
@@ -267,7 +199,7 @@ def eval(model, test_loader, device, pi=None):
   union = (pi_nowater + pi_star).sum(dim=(1, 2)) - intersection
   iou_nowater = (intersection / (union + 1e-6)).mean().item()
 
-  print(f'Test MAE: {mae:.0f},', 
+  print(f'Test MAE water: {mae:.0f},', 
         f'Test IoU water: {iou_water:.3f},',
         f'Test IoU no water: {iou_nowater:.3f},',
         f'Test TDR water: {tdr_water:.3f}',
@@ -279,26 +211,3 @@ def eval(model, test_loader, device, pi=None):
 
 
 
-
-class SDLoss(nn.Module):
-  """ Entropy (NLL) and optional L2 regularization on the detection map. 
-    Init:
-      lam (float): Regularization coefficient for the L2 penalty.
-    Forward:
-      logits (torch.Tensor): Predicted logits.
-      y_true (torch.Tensor): True labels.
-      pi (torch.Tensor, optional): Detection map.
-  """
-
-  def __init__(self, lam=0., **kwargs):
-    super().__init__()
-    self.lam = lam
-
-  def forward(self, logits, y_true, pi=None):
-    entropy = F.binary_cross_entropy_with_logits(logits, y_true, reduction='mean')
-    if self.lam > 0 and pi is not None:
-      penalty = (pi**2).sum(dim=(1, 2, 3)).mean() * self.lam
-      return entropy + penalty
-    else:
-      return entropy
-    
