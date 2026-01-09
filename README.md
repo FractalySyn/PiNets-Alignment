@@ -1,13 +1,15 @@
 # PiNets and Explanatory Alignment
 
 
-<a href="https://arxiv.org/abs/2601.04378"><img src="https://img.shields.io/badge/arXiv%20-%20preprint-%23FF0000?logo=arxiv&logoColor=white" alt="arXiv - preprint"></a>
-<a href="https://github.com/FractalySyn/PiNets-Alignment?tab=MIT-1-ov-file"><img src="https://img.shields.io/badge/License-MIT-blue.svg" alt="License - MIT"></a>
+<a href="https://www.python.org/"><img src="https://img.shields.io/badge/Python-%233776AB.svg?logo=python&logoColor=white" alt="Python"></a>
 <a href="https://pytorch.org/"><img src="https://img.shields.io/badge/PyTorch-%23EE4C2C.svg?logo=pytorch&logoColor=white" alt="PyTorch"></a>
+<a href="https://github.com/FractalySyn/PiNets-Alignment?tab=MIT-1-ov-file"><img src="https://img.shields.io/badge/License-MIT-white.svg" alt="License - MIT"></a>
 
 
 
-Official implementation of the paper: **"Aligned explanations in neural networks"**
+Official implementation of the paper **"Aligned explanations in neural networks"**
+
+<a href="https://arxiv.org/abs/2601.04378"><img src="https://img.shields.io/badge/arXiv%20-%20preprint-%23FF0000?logo=arxiv&logoColor=white" alt="arXiv - preprint"></a>
 
 ```bibtex
 @article{pinets2026,
